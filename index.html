@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meme Coin Scanner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+  :root {
+    --bg:#080b0f;--bg2:#0d1117;--bg3:#111820;--border:#1e2d3d;--border2:#243447;
+    --accent:#00ff88;--accent2:#00c8ff;--red:#ff4444;--amber:#ffaa00;
+    --text:#c9d6e3;--text2:#6b8299;--text3:#3d566e;
+    --font-mono:'Share Tech Mono',monospace;--font-ui:'Rajdhani',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:15px;min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,0.012) 2px,rgba(0,255,136,0.012) 4px);pointer-events:none;z-index:0;}
+  #app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 20px 40px;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:24px 0 20px;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .logo-icon{width:38px;height:38px;border:1px solid var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--accent);font-family:var(--font-mono);font-weight:bold;}
+  .logo-text{font-size:22px;font-weight:700;letter-spacing:2px;color:#fff;text-transform:uppercase;}
+  .logo-sub{font-size:11px;color:var(--text2);font-family:var(--font-mono);letter-spacing:1px;}
+  .header-right{display:flex;align-items:center;gap:10px;}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);transition:background 0.3s;}
+  .live-dot.active{background:var(--accent);animation:pulse 1.5s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .live-label{font-size:12px;font-family:var(--font-mono);color:var(--text2);letter-spacing:1px;}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+  select,input[type=number]{background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-ui);font-size:14px;padding:9px 14px;border-radius:6px;outline:none;cursor:pointer;}
+  select:focus,input[type=number]:focus{border-color:var(--accent);}
+  select option{background:#0d1117;}
+  .btn-scan{background:var(--accent);color:#000;border:none;font-family:var(--font-ui);font-size:15px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:9px 24px;border-radius:6px;cursor:pointer;transition:all 0.2s;}
+  .btn-scan:hover{background:#00ffaa;}
+  .btn-scan:disabled{background:var(--text3);color:var(--bg);cursor:not-allowed;}
+  .btn-auto{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--font-ui);font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:9px 16px;border-radius:6px;cursor:pointer;transition:all 0.2s;}
+  .btn-auto.on{border-color:var(--amber);color:var(--amber);}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;}
+  .filter-label{font-size:12px;color:var(--text2);font-family:var(--font-mono);letter-spacing:0.5px;margin-right:4px;}
+  .filter-check{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:4px;user-select:none;}
+  .filter-check input{display:none;}
+  .filter-check .dot{width:10px;height:10px;border-radius:50%;border:1px solid var(--text3);transition:all 0.15s;flex-shrink:0;}
+  .filter-check input:checked + .dot{background:var(--accent);border-color:var(--accent);}
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px;}
+  .s-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;}
+  .s-card .label{font-size:11px;font-family:var(--font-mono);color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+  .s-card .val{font-size:24px;font-weight:700;color:#fff;line-height:1;}
+  .s-card .val.green{color:var(--accent);}
+  .s-card .val.amber{color:var(--amber);}
+  .status-bar{font-family:var(--font-mono);font-size:12px;color:var(--text2);padding:8px 0 14px;letter-spacing:0.5px;min-height:36px;display:flex;align-items:center;gap:8px;}
+  .spinner{width:12px;height:12px;border:1.5px solid var(--text3);border-top-color:var(--accent);border-radius:50%;display:none;animation:spin 0.7s linear infinite;flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading .spinner{display:block!important;}
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg2);}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px;}
+  thead th{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;}
+  thead th:hover{color:var(--accent2);}
+  tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;animation:rowIn 0.25s ease forwards;opacity:0;}
+  @keyframes rowIn{to{opacity:1;}}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:rgba(0,255,136,0.03);}
+  td{padding:11px 14px;vertical-align:middle;color:var(--text);white-space:nowrap;}
+  .ticker{font-weight:700;font-size:15px;color:#fff;letter-spacing:0.5px;}
+  .pair-name{font-size:11px;color:var(--text2);}
+  .pair-addr{font-family:var(--font-mono);font-size:10px;color:var(--text3);}
+  .chain-badge{display:inline-block;font-size:10px;font-family:var(--font-mono);padding:2px 8px;border-radius:4px;border:1px solid var(--border2);color:var(--text2);text-transform:uppercase;}
+  .pos{color:var(--accent);font-weight:600;}
+  .neg{color:var(--red);font-weight:600;}
+  .score-wrap{display:flex;align-items:center;gap:8px;}
+  .score-num{font-family:var(--font-mono);font-weight:bold;font-size:14px;min-width:26px;}
+  .score-track{width:56px;height:5px;background:var(--bg3);border-radius:99px;overflow:hidden;}
+  .score-fill{height:100%;border-radius:99px;}
+  .signal{display:inline-block;font-size:10px;font-weight:700;font-family:var(--font-mono);letter-spacing:1px;padding:3px 10px;border-radius:4px;text-transform:uppercase;}
+  .signal-hot{background:rgba(255,68,68,0.15);color:var(--red);border:1px solid rgba(255,68,68,0.3);}
+  .signal-warm{background:rgba(255,170,0,0.12);color:var(--amber);border:1px solid rgba(255,170,0,0.25);}
+  .signal-cold{background:rgba(61,86,110,0.2);color:var(--text3);border:1px solid var(--border);}
+  .dex-link{font-family:var(--font-mono);font-size:11px;color:var(--accent2);text-decoration:none;padding:3px 8px;border:1px solid rgba(0,200,255,0.2);border-radius:4px;}
+  .dex-link:hover{background:rgba(0,200,255,0.1);}
+  .new-badge{display:inline-block;font-size:9px;font-family:var(--font-mono);padding:1px 5px;border-radius:3px;background:rgba(0,200,255,0.12);color:var(--accent2);border:1px solid rgba(0,200,255,0.2);margin-left:4px;vertical-align:middle;}
+  .empty{text-align:center;padding:60px 20px;color:var(--text2);font-family:var(--font-mono);font-size:13px;letter-spacing:1px;}
+  .error-box{background:rgba(255,68,68,0.08);border:1px solid rgba(255,68,68,0.25);border-radius:8px;padding:16px 20px;margin-bottom:16px;font-family:var(--font-mono);font-size:12px;color:#ff8888;line-height:1.8;display:none;}
+  .disclaimer{margin-top:28px;font-size:11px;font-family:var(--font-mono);color:var(--text3);letter-spacing:0.5px;border-top:1px solid var(--border);padding-top:16px;line-height:1.7;}
+  input[type=number]{width:160px;}
+  input[type=number]::-webkit-inner-spin-button{opacity:0.4;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">M</div>
+      <div>
+        <div class="logo-text">Meme Scanner</div>
+        <div class="logo-sub">DEX Screener Live Feed</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-dot" id="live-dot"></div>
+      <span class="live-label" id="live-label">OFFLINE</span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-left:8px;" id="last-scan"></span>
+    </div>
+  </header>
+
+  <div id="error-box" class="error-box"></div>
+
+  <div class="controls">
+    <select id="chain-select">
+      <option value="solana">Solana</option>
+      <option value="ethereum">Ethereum</option>
+      <option value="bsc">BSC (BNB Chain)</option>
+      <option value="base">Base</option>
+      <option value="arbitrum">Arbitrum</option>
+    </select>
+    <select id="sort-select">
+      <option value="score">Sort: AI Score</option>
+      <option value="volume">Sort: Volume 24h</option>
+      <option value="change">Sort: Price Change %</option>
+      <option value="liquidity">Sort: Liquidity</option>
+      <option value="age">Sort: Newest First</option>
+      <option value="txns">Sort: Transactions</option>
+    </select>
+    <input type="number" id="min-liq" placeholder="Min liquidity $" value="5000" />
+    <button class="btn-scan" id="scan-btn" onclick="runScan()">&#9654; Scan Now</button>
+    <button class="btn-auto" id="auto-btn" onclick="toggleAuto()">Auto: OFF</button>
+  </div>
+
+  <div class="filters">
+    <span class="filter-label">FILTERS:</span>
+    <label class="filter-check"><input type="checkbox" id="f-new" checked /><span class="dot"></span>&lt;24h old</label>
+    <label class="filter-check"><input type="checkbox" id="f-liq" checked /><span class="dot"></span>Liq &gt;$5k</label>
+    <label class="filter-check"><input type="checkbox" id="f-vol" /><span class="dot"></span>Vol &gt;$10k</label>
+    <label class="filter-check"><input type="checkbox" id="f-rug" checked /><span class="dot"></span>Hide rugpulls</label>
+    <label class="filter-check"><input type="checkbox" id="f-hot" /><span class="dot"></span>Hot only (70+)</label>
+  </div>
+
+  <div class="summary" id="summary" style="display:none;">
+    <div class="s-card"><div class="label">Pairs found</div><div class="val" id="s-total">0</div></div>
+    <div class="s-card"><div class="label">Hot signals</div><div class="val green" id="s-hot">0</div></div>
+    <div class="s-card"><div class="label">Avg score</div><div class="val" id="s-avg">0/100</div></div>
+    <div class="s-card"><div class="label">Total volume</div><div class="val amber" id="s-vol">—</div></div>
+    <div class="s-card"><div class="label">New (&lt;1h)</div><div class="val" style="color:var(--accent2)" id="s-new">0</div></div>
+  </div>
+
+  <div class="status-bar" id="status-bar">
+    <span class="spinner" id="spinner"></span>
+    <span id="status-text">Select a chain and click Scan Now to start.</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Token</th>
+          <th>Chain</th>
+          <th onclick="setSort('age')">Age</th>
+          <th>Price</th>
+          <th onclick="setSort('change')">24h %</th>
+          <th onclick="setSort('volume')">Volume 24h</th>
+          <th onclick="setSort('liquidity')">Liquidity</th>
+          <th onclick="setSort('txns')">Buys / Sells</th>
+          <th onclick="setSort('score')">Score</th>
+          <th>Signal</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="12"><div class="empty">// Click "Scan Now" to fetch live meme coins from DEX Screener</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="disclaimer">
+    WARNING: NOT FINANCIAL ADVICE. Meme coins are extremely high-risk speculative assets. You can lose everything.
+    Data sourced from DEX Screener public API. Always verify contracts and LP locks before investing.
+  </div>
+</div>
+
+<script>
+var allTokens = [];
+var autoTimer = null;
+var autoOn = false;
+var QUERIES = ['meme','pepe','dog','cat','inu','moon','based','ai','trump','elon','wojak','chad','pump','sol','bonk'];
+var PROXIES = [
+  function(u){ return 'https://corsproxy.io/?' + encodeURIComponent(u); },
+  function(u){ return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+  function(u){ return 'https://thingproxy.freeboard.io/fetch/' + u; }
+];
+
+async function fetchWithProxy(url) {
+  try {
+    var r = await fetch(url);
+    if (r.ok) { var d = await r.json(); return d; }
+  } catch(e) {}
+  for (var i = 0; i < PROXIES.length; i++) {
+    try {
+      var r2 = await fetch(PROXIES[i](url));
+      if (r2.ok) { var txt = await r2.text(); return JSON.parse(txt); }
+    } catch(e2) {}
+  }
+  return null;
+}
+
+function fmt(n) {
+  if (!n && n !== 0) return '—';
+  n = parseFloat(n);
+  if (isNaN(n)) return '—';
+  if (n >= 1e9) return '$'+(n/1e9).toFixed(2)+'B';
+  if (n >= 1e6) return '$'+(n/1e6).toFixed(2)+'M';
+  if (n >= 1e3) return '$'+(n/1e3).toFixed(1)+'K';
+  return '$'+n.toFixed(2);
+}
+
+function fmtPrice(p) {
+  if (!p) return '—';
+  p = parseFloat(p);
+  if (!p) return '—';
+  if (p < 0.000001) return '$'+p.toExponential(2);
+  if (p < 0.001) return '$'+p.toPrecision(3);
+  if (p < 1) return '$'+p.toFixed(5);
+  return '$'+p.toFixed(3);
+}
+
+function fmtAge(ts) {
+  if (!ts) return '—';
+  var m = Math.floor((Date.now()-ts)/60000);
+  if (m < 1) return '<1m';
+  if (m < 60) return m+'m';
+  var h = Math.floor(m/60);
+  if (h < 24) return h+'h';
+  return Math.floor(h/24)+'d';
+}
+
+function score(t) {
+  var s=0,vol=parseFloat(t.volume&&t.volume.h24||0),liq=parseFloat(t.liquidity&&t.liquidity.usd||0),
+      chg=parseFloat(t.priceChange&&t.priceChange.h24||0),
+      buys=parseInt(t.txns&&t.txns.h24&&t.txns.h24.buys||0),
+      sells=parseInt(t.txns&&t.txns.h24&&t.txns.h24.sells||0),
+      txns=buys+sells,age=t.pairCreatedAt?(Date.now()-t.pairCreatedAt)/3600000:9999;
+  if(vol>1000000)s+=25;else if(vol>200000)s+=20;else if(vol>50000)s+=14;else if(vol>10000)s+=8;else if(vol>1000)s+=3;
+  if(liq>500000)s+=18;else if(liq>100000)s+=13;else if(liq>30000)s+=9;else if(liq>5000)s+=4;
+  if(txns>10000)s+=20;else if(txns>3000)s+=15;else if(txns>500)s+=10;else if(txns>100)s+=5;
+  if(chg>500)s+=18;else if(chg>100)s+=13;else if(chg>30)s+=8;else if(chg>5)s+=4;else if(chg<-30)s-=8;else if(chg<0)s-=2;
+  if(age<0.5)s+=18;else if(age<2)s+=13;else if(age<6)s+=8;else if(age<24)s+=4;
+  var br=txns>0?buys/txns:0.5;
+  if(br>0.7)s+=12;else if(br>0.55)s+=6;else if(br<0.3)s-=8;
+  return Math.min(100,Math.max(0,Math.round(s)));
+}
+
+function isRug(t) {
+  var liq=parseFloat(t.liquidity&&t.liquidity.usd||0),
+      buys=parseInt(t.txns&&t.txns.h24&&t.txns.h24.buys||0),
+      sells=parseInt(t.txns&&t.txns.h24&&t.txns.h24.sells||0);
+  if(liq<1500)return true;
+  if(sells>10&&buys/Math.max(1,sells)<0.1)return true;
+  return false;
+}
+
+function setSort(k){ document.getElementById('sort-select').value=k; if(allTokens.length)renderFiltered(); }
+
+function applyFilters() {
+  var minLiq=parseFloat(document.getElementById('min-liq').value)||0;
+  var fNew=document.getElementById('f-new').checked, fLiq=document.getElementById('f-liq').checked,
+      fVol=document.getElementById('f-vol').checked, fRug=document.getElementById('f-rug').checked,
+      fHot=document.getElementById('f-hot').checked;
+  return allTokens.filter(function(t){
+    var age=t.pairCreatedAt?(Date.now()-t.pairCreatedAt)/3600000:9999;
+    var liq=parseFloat(t.liquidity&&t.liquidity.usd||0);
+    var vol=parseFloat(t.volume&&t.volume.h24||0);
+    if(fNew&&age>24)return false;
+    if(fLiq&&liq<5000)return false;
+    if(fVol&&vol<10000)return false;
+    if(liq<minLiq)return false;
+    if(fRug&&isRug(t))return false;
+    if(fHot&&t._score<70)return false;
+    return true;
+  });
+}
+
+function renderFiltered() {
+  var tokens=applyFilters(), sort=document.getElementById('sort-select').value;
+  tokens.sort(function(a,b){
+    if(sort==='score')return b._score-a._score;
+    if(sort==='volume')return parseFloat(b.volume&&b.volume.h24||0)-parseFloat(a.volume&&a.volume.h24||0);
+    if(sort==='change')return parseFloat(b.priceChange&&b.priceChange.h24||0)-parseFloat(a.priceChange&&a.priceChange.h24||0);
+    if(sort==='liquidity')return parseFloat(b.liquidity&&b.liquidity.usd||0)-parseFloat(a.liquidity&&a.liquidity.usd||0);
+    if(sort==='age')return(b.pairCreatedAt||0)-(a.pairCreatedAt||0);
+    if(sort==='txns')return(parseInt(b.txns&&b.txns.h24&&b.txns.h24.buys||0)+parseInt(b.txns&&b.txns.h24&&b.txns.h24.sells||0))-(parseInt(a.txns&&a.txns.h24&&a.txns.h24.buys||0)+parseInt(a.txns&&a.txns.h24&&a.txns.h24.sells||0));
+    return 0;
+  });
+  renderTable(tokens.slice(0,100));
+  updateSummary(tokens);
+}
+
+function renderTable(tokens) {
+  var tbody=document.getElementById('table-body');
+  if(!tokens.length){tbody.innerHTML='<tr><td colspan="12"><div class="empty">// No tokens matched filters — try relaxing them</div></td></tr>';return;}
+  var html='';
+  for(var i=0;i<tokens.length;i++){
+    var t=tokens[i],sc=t._score,chg=parseFloat(t.priceChange&&t.priceChange.h24||0),
+        chgStr=(chg>=0?'+':'')+chg.toFixed(1)+'%', chgCls=chg>=0?'pos':'neg',
+        buys=parseInt(t.txns&&t.txns.h24&&t.txns.h24.buys||0),
+        sells=parseInt(t.txns&&t.txns.h24&&t.txns.h24.sells||0),
+        age=t.pairCreatedAt?(Date.now()-t.pairCreatedAt)/3600000:9999,
+        isNew=age<1, bc=sc>=70?'#ff4444':sc>=45?'#ffaa00':'#3d566e',
+        sigLabel=sc>=70?'HOT':sc>=45?'WARM':'WEAK',
+        sigCls=sc>=70?'signal-hot':sc>=45?'signal-warm':'signal-cold',
+        pairUrl='https://dexscreener.com/'+(t.chainId||'')+'/'+(t.pairAddress||''),
+        ticker=((t.baseToken&&t.baseToken.symbol)||'?').slice(0,12),
+        name=((t.baseToken&&t.baseToken.name)||'').slice(0,20),
+        addr=t.pairAddress?t.pairAddress.slice(0,5)+'...'+t.pairAddress.slice(-4):'',
+        delay=(Math.min(i,30)*0.025).toFixed(3);
+    html+='<tr style="animation-delay:'+delay+'s">';
+    html+='<td style="color:var(--text3);font-family:var(--font-mono);font-size:11px;">'+(i+1)+'</td>';
+    html+='<td><div class="ticker">'+ticker+(isNew?'<span class="new-badge">NEW</span>':'')+'</div><div class="pair-name">'+name+'</div><div class="pair-addr">'+addr+'</div></td>';
+    html+='<td><span class="chain-badge">'+(t.chainId||'?')+'</span></td>';
+    html+='<td style="font-family:var(--font-mono);font-size:12px;color:var(--text2);">'+fmtAge(t.pairCreatedAt)+'</td>';
+    html+='<td style="font-family:var(--font-mono);font-size:12px;">'+fmtPrice(t.priceUsd)+'</td>';
+    html+='<td class="'+chgCls+'">'+chgStr+'</td>';
+    html+='<td style="font-family:var(--font-mono);font-size:12px;">'+fmt(t.volume&&t.volume.h24)+'</td>';
+    html+='<td style="font-family:var(--font-mono);font-size:12px;">'+fmt(t.liquidity&&t.liquidity.usd)+'</td>';
+    html+='<td style="font-family:var(--font-mono);font-size:12px;"><span class="pos">'+buys+'</span><span style="color:var(--text3);"> / </span><span class="neg">'+sells+'</span></td>';
+    html+='<td><div class="score-wrap"><span class="score-num" style="color:'+bc+'">'+sc+'</span><div class="score-track"><div class="score-fill" style="width:'+sc+'%;background:'+bc+';"></div></div></div></td>';
+    html+='<td><span class="signal '+sigCls+'">'+sigLabel+'</span></td>';
+    html+='<td><a href="'+pairUrl+'" class="dex-link" target="_blank">&#8599; DEX</a></td>';
+    html+='</tr>';
+  }
+  tbody.innerHTML=html;
+}
+
+function updateSummary(tokens) {
+  var hot=0,totalVol=0,newCount=0,totalScore=0;
+  for(var i=0;i<tokens.length;i++){
+    if(tokens[i]._score>=70)hot++;
+    totalVol+=parseFloat(tokens[i].volume&&tokens[i].volume.h24||0);
+    if(tokens[i].pairCreatedAt&&(Date.now()-tokens[i].pairCreatedAt)<3600000)newCount++;
+    totalScore+=tokens[i]._score;
+  }
+  var avg=tokens.length?Math.round(totalScore/tokens.length):0;
+  document.getElementById('s-total').textContent=tokens.length;
+  document.getElementById('s-hot').textContent=hot;
+  document.getElementById('s-avg').textContent=avg+'/100';
+  document.getElementById('s-vol').textContent=fmt(totalVol);
+  document.getElementById('s-new').textContent=newCount;
+  document.getElementById('summary').style.display='grid';
+}
+
+function setStatus(msg,loading){
+  document.getElementById('status-text').textContent=msg;
+  var b=document.getElementById('status-bar');
+  if(loading)b.classList.add('loading');else b.classList.remove('loading');
+}
+
+async function runScan() {
+  var chain=document.getElementById('chain-select').value;
+  var btn=document.getElementById('scan-btn');
+  btn.disabled=true; btn.textContent='Scanning...';
+  document.getElementById('error-box').style.display='none';
+  setStatus('Connecting to DEX Screener...',true);
+  document.getElementById('live-dot').classList.add('active');
+  document.getElementById('live-label').textContent='LIVE';
+
+  var seen={}, combined=[], failCount=0;
+
+  for(var qi=0;qi<QUERIES.length;qi++){
+    setStatus('Scanning "'+QUERIES[qi]+'" ('+( qi+1)+'/'+QUERIES.length+') — '+combined.length+' pairs found so far',true);
+    try {
+      var url='https://api.dexscreener.com/latest/dex/search?q='+QUERIES[qi];
+      var d=await fetchWithProxy(url);
+      if(d&&d.pairs){
+        for(var pi=0;pi<d.pairs.length;pi++){
+          var p=d.pairs[pi];
+          if(p.chainId!==chain||!p.pairAddress||seen[p.pairAddress])continue;
+          seen[p.pairAddress]=true;
+          p._score=score(p);
+          combined.push(p);
+        }
+      }
+    } catch(e){ failCount++; }
+  }
+
+  try {
+    var bd=await fetchWithProxy('https://api.dexscreener.com/token-boosts/latest/v1');
+    if(bd){
+      var blist=Array.isArray(bd)?bd:(bd.pairs||[]);
+      for(var bi=0;bi<blist.length;bi++){
+        var b=blist[bi];
+        if(b.chainId!==chain||!b.pairAddress||seen[b.pairAddress])continue;
+        seen[b.pairAddress]=true;
+        b._score=Math.min(100,score(b)+8);
+        combined.push(b);
+      }
+    }
+  } catch(e){}
+
+  allTokens=combined;
+
+  if(allTokens.length===0){
+    var eb=document.getElementById('error-box');
+    eb.innerHTML='Could not load data. Try these fixes:<br>'+
+      '1. Open the file in <b>Chrome</b> or <b>Firefox</b> (not Edge or Safari)<br>'+
+      '2. Disable any ad blocker / VPN for this page<br>'+
+      '3. Make sure you have an internet connection<br>'+
+      '4. Try clicking Scan Now again — proxies sometimes need a retry';
+    eb.style.display='block';
+    setStatus('Scan failed. See instructions above.',false);
+    btn.disabled=false; btn.textContent='&#9654; Scan Now';
+    if(!autoOn){document.getElementById('live-dot').classList.remove('active');document.getElementById('live-label').textContent='OFFLINE';}
+    return;
+  }
+
+  var now=new Date().toLocaleTimeString();
+  var filtered=applyFilters();
+  setStatus('Found '+allTokens.length+' pairs on '+chain+' — '+filtered.length+' passed filters. Last scan: '+now+(failCount?' ('+failCount+' queries failed)':''),false);
+  document.getElementById('last-scan').textContent='Last: '+now;
+  renderFiltered();
+  btn.disabled=false; btn.textContent='&#9654; Scan Now';
+  if(!autoOn){document.getElementById('live-dot').classList.remove('active');document.getElementById('live-label').textContent='OFFLINE';}
+}
+
+function toggleAuto(){
+  autoOn=!autoOn;
+  var btn=document.getElementById('auto-btn');
+  if(autoOn){
+    btn.textContent='Auto: ON (30s)'; btn.classList.add('on');
+    document.getElementById('live-dot').classList.add('active');
+    document.getElementById('live-label').textContent='LIVE';
+    runScan();
+    autoTimer=setInterval(runScan,30000);
+  } else {
+    btn.textContent='Auto: OFF'; btn.classList.remove('on');
+    document.getElementById('live-dot').classList.remove('active');
+    document.getElementById('live-label').textContent='OFFLINE';
+    clearInterval(autoTimer); autoTimer=null;
+  }
+}
+
+['sort-select','f-new','f-liq','f-vol','f-rug','f-hot','min-liq'].forEach(function(id){
+  var el=document.getElementById(id);
+  if(el) el.addEventListener('change',function(){ if(allTokens.length) renderFiltered(); });
+});
+</script>
+</body>
+</html>
